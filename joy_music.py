@@ -29,7 +29,7 @@ def _format_device(d):
     maker = d.get("manufacturer_string") or "(unknown maker)"
     return f"VID:PID={vid:04X}:{pid:04X} / {product} / {maker}"
 
-def find_joycon():
+def find_joycons():
     devices = hid.enumerate()
 
     # Primary match: Nintendo VID + known Joy-Con/Pro PID
@@ -134,7 +134,7 @@ class JoyConRumbler:
         end = time.perf_counter() + duration
         while time.perf_counter() < end:
             self.rumble(left, right)
-            time.sleep(0.015)
+            time.sleep(0.0)
         self.stop()
 
     def play_melody(self, notes, amp=DEFAULT_AMP, gap=0.02):
@@ -166,7 +166,7 @@ melody = [
 
 def main():
     try:
-        path = find_joycon()
+        path = find_joycons()
     except RuntimeError as e:
         print(e)
         sys.exit(1)

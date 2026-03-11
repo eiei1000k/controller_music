@@ -1,0 +1,49 @@
+{
+  "title": "test_song",
+  "bpm": 90,
+  "division": 10,
+  "default_amp": 0.5,
+  "assignment": {
+    "pair_1": ["L", "R"]
+  },
+  "tracks": [
+    {
+      "name": "left_part",
+      "device": "L",
+      "amp": 0.5,
+      "notes": [
+        { "note": "G4", "length": 1 },
+        { "note": "D#4", "length": 1 },
+        { "note": "A#3", "length": 1 },
+        { "note": "D#4", "length": 1 },
+        { "note": "F4", "length": 1 },
+        { "note": "A#4", "length": 2 },
+        { "note": "A#3", "length": 1 },
+        { "note": "F4", "length": 1 },
+        { "note": "G4", "length": 1 },
+        { "note": "F4", "length": 1 },
+        { "note": "A#3", "length": 1 },
+        { "note": "D#4", "length": 2 }
+      ]
+    },
+    {
+      "name": "right_part",
+      "device": "R",
+      "amp": 0.3,
+      "notes": [
+        { "note": "G3", "length": 1 },
+        { "note": "REST", "length": 1 },
+        { "note": "G3", "length": 1 },
+        { "note": "REST", "length": 1 },
+        { "note": "F3", "length": 1 },
+        { "note": "REST", "length": 2 },
+        { "note": "A#2", "length": 1 },
+        { "note": "F3", "length": 1 },
+        { "note": "REST", "length": 1 },
+        { "note": "F3", "length": 1 },
+        { "note": "REST", "length": 1 },
+        { "note": "D#3", "length": 2 }
+      ]
+    }
+  ]
+}
