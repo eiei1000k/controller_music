@@ -11,8 +11,10 @@ def build_devices():
         "L": JoyConDevice(pair["L"], "L"),
         "R": JoyConDevice(pair["R"], "R"),
     }
+
     for device in devices.values():
         device.enable_vibration()
+
     return devices
 
 
@@ -26,7 +28,8 @@ def close_devices(devices):
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("song", nargs="?", default="songs/family_mart.json")
+    parser.add_argument("song", nargs="?", default="songs/donkeykong.json")
+    parser.add_argument("--tick", type=float, default=0.005)
     args = parser.parse_args()
 
     song_path = Path(args.song)
@@ -34,10 +37,10 @@ def main():
         raise FileNotFoundError(f"曲データが見つかりません: {song_path}")
 
     song = load_song(song_path)
-
     devices = build_devices()
+
     try:
-        play_song(song, devices)
+        play_song(song, devices, tick=args.tick)
     finally:
         close_devices(devices)
 

@@ -1,5 +1,4 @@
 import json
-import threading
 import time
 
 NOTE_INDEX = {
@@ -79,68 +78,99 @@ def length_to_seconds(length, bpm, division=4):
     return beat_seconds * length * base
 
 
-def expand_track(track, bpm, division, default_amp):
-    expanded = []
-    track_amp = track.get("amp", default_amp)
-
-    for item in track["notes"]:
-        note = item["note"]
-        length = float(item["length"])
-        amp = float(item.get("amp", track_amp))
-        hz = note_to_hz(note)
-        duration = length_to_seconds(length, bpm, division)
-        expanded.append({
-            "hz": hz,
-            "duration": duration,
-            "amp": amp,
-        })
-    return expanded
-
-
-def build_playback_plan(song):
+def build_timeline(song):
     validate_song(song)
+
     bpm = float(song["bpm"])
     division = int(song.get("division", 4))
     default_amp = float(song.get("default_amp", 0.18))
 
-    plan = []
+    timelines = {}
+    total_duration = 0.0
+
     for track in song["tracks"]:
         if "device" not in track:
             raise ValueError(f"track に device がありません: {track}")
         if "notes" not in track:
             raise ValueError(f"track に notes がありません: {track}")
-        plan.append({
-            "name": track.get("name", track["device"]),
-            "device": track["device"],
-            "events": expand_track(track, bpm, division, default_amp),
-        })
-    return plan
+
+        device = track["device"]
+        current_time = 0.0
+        track_amp = float(track.get("amp", default_amp))
+        events = []
+
+        for index, item in enumerate(track["notes"]):
+            note = item["note"]
+            length = float(item["length"])
+            amp = float(item.get("amp", track_amp))
+            hz = note_to_hz(note)
+            duration = length_to_seconds(length, bpm, division)
+
+            events.append({
+                "index": index,
+                "start": current_time,
+                "end": current_time + duration,
+                "hz": hz,
+                "amp": amp,
+            })
+            current_time += duration
+
+        timelines[device] = events
+        total_duration = max(total_duration, current_time)
+
+    return timelines, total_duration
 
 
-def play_track(device, events):
+def get_event_at(events, now):
     for event in events:
-        hz = event["hz"]
-        duration = event["duration"]
-        amp = event["amp"]
-
-        if hz is None:
-            device.stop()
-            time.sleep(duration)
-        else:
-            device.play_tone(hz, duration, amp=amp)
+        if event["start"] <= now < event["end"]:
+            return event
+    return None
 
 
-def play_song(song, devices):
-    plan = build_playback_plan(song)
-    threads = []
+def play_song(song, devices, tick=0.005, retrigger_gap=0.002):
+    timelines, total_duration = build_timeline(song)
+    device_names = list(devices.keys())
+    last_state = {name: None for name in device_names}
 
-    for track in plan:
-        device_name = track["device"]
-        if device_name not in devices:
-            raise RuntimeError(f"必要なデバイスがありません: {device_name}")
-        t = threading.Thread(target=play_track, args=(devices[device_name], track["events"]))
-        t.start()
-        threads.append(t)
+    start_time = time.perf_counter()
+    next_tick = start_time
 
-    for t in threads:
-        t.join()
+    while True:
+        now = time.perf_counter() - start_time
+        if now >= total_duration:
+            break
+
+        for name in device_names:
+            device = devices[name]
+            events = timelines.get(name, [])
+            event = get_event_at(events, now)
+
+            if event is None or event["hz"] is None:
+                state = None
+            else:
+                state = (event["index"], round(event["hz"], 4), round(event["amp"], 4))
+
+            if state != last_state[name]:
+                if state is None:
+                    device.stop()
+                else:
+                    prev_state = last_state[name]
+                    if prev_state is not None and prev_state[1] == state[1]:
+                        device.stop()
+                        if retrigger_gap > 0:
+                            time.sleep(retrigger_gap)
+                    packet = device.make_packet(event["hz"], event["amp"])
+                    device.rumble(packet)
+                last_state[name] = state
+            elif state is not None:
+                packet = device.make_packet(event["hz"], event["amp"])
+                device.rumble(packet)
+
+        next_tick += tick
+        sleep_time = next_tick - time.perf_counter()
+        if sleep_time > 0:
+            time.sleep(sleep_time)
+
+    for device in devices.values():
+        device.stop()

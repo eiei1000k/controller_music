@@ -2,7 +2,7 @@
   "title": "test_song",
   "bpm": 90,
   "division": 10,
-  "default_amp": 0.5,
+  "default_amp": 1.0,
   "assignment": {
     "pair_1": ["L", "R"]
   },
@@ -10,7 +10,7 @@
     {
       "name": "left_part",
       "device": "L",
-      "amp": 0.5,
+      "amp": 1.0,
       "notes": [
         { "note": "G4", "length": 1 },
         { "note": "D#4", "length": 1 },

@@ -32,13 +32,14 @@ def list_supported_devices():
 def classify_device(info):
     pid = info.get("product_id")
     product_name = (info.get("product_string") or "").lower()
+
     if pid == JOYCON_L_PRODUCT_ID:
         return "L"
     if pid == JOYCON_R_PRODUCT_ID:
         return "R"
     if pid == PRO_CONTROLLER_PRODUCT_ID:
         return "P"
-    if "joy-con (l)" in product_name or "joy-con (l/r)" in product_name:
+    if "joy-con (l)" in product_name:
         return "L"
     if "joy-con (r)" in product_name:
         return "R"
@@ -62,7 +63,14 @@ def find_joycon_pair():
             right = d
 
     if left is None or right is None:
-        raise RuntimeError("Joy-Con(L) と Joy-Con(R) の両方が見つかりません")
+        names = []
+        for d in devices:
+            product = d.get("product_string") or "Unknown"
+            manufacturer = d.get("manufacturer_string") or "Unknown"
+            names.append(f"{manufacturer} / {product}")
+        detail = "\n".join(names) if names else "候補デバイスなし"
+        raise RuntimeError(f"Joy-Con(L) と Joy-Con(R) の両方が見つかりません\n{detail}")
+
     return {"L": left, "R": right}
 
 
@@ -79,14 +87,16 @@ def encode_amp(amp):
     if amp <= 0.0:
         return 0, 0x40
 
-    if amp < 0.117:
-        encoded = int(round((math.log2(amp * 1000.0) * 32.0 - 0x60) / (5.0 - amp * amp) - 1.0))
-    elif amp < 0.23:
-        encoded = int(round(math.log2(amp * 1000.0) * 32.0 - 0x60 - 0x5C))
-    else:
-        encoded = int(round((math.log2(amp * 1000.0) * 32.0 - 0x60) * 2.0 - 0xF6))
+    x = math.log2(amp * 1000.0) * 32.0 - 0x60
 
-    encoded = max(1, min(encoded, 0x7FFF))
+    if amp < 0.117:
+        encoded = int(round(x / (5.0 - amp * amp) - 1.0))
+    elif amp < 0.23:
+        encoded = int(round(x - 0x5C))
+    else:
+        encoded = int(round(x * 2.0 - 0xF6))
+
+    encoded = max(1, min(encoded, 100))
     hf_amp = min(encoded * 2, 0x01FC)
     lf_amp = min(encoded // 2 + 0x40, 0x0072)
     return hf_amp, lf_amp
@@ -139,6 +149,9 @@ class JoyConDevice:
         self.send_subcommand(0x48, b"\x01")
         time.sleep(0.05)
 
+    def make_packet(self, hz, amp):
+        return encode_rumble(hz, amp)
+
     def rumble(self, packet):
         if self.side == "L":
             left = packet
@@ -159,11 +172,3 @@ class JoyConDevice:
 
     def stop(self):
         self.rumble(NEUTRAL_RUMBLE)
-
-    def play_tone(self, hz, duration, amp=0.18, refresh_interval=0.015):
-        packet = encode_rumble(hz, amp)
-        end_time = time.perf_counter() + duration
-        while time.perf_counter() < end_time:
-            self.rumble(packet)
-            time.sleep(refresh_interval)
-        self.stop()
