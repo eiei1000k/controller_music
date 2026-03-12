@@ -28,7 +28,7 @@ def close_devices(devices):
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("song", nargs="?", default="songs/donkeykong.json")
+    parser.add_argument("song", nargs="?", default="songs/family_mart.json")
     parser.add_argument("--tick", type=float, default=0.005)
     args = parser.parse_args()
 

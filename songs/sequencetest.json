@@ -1,0 +1,23 @@
+{
+  "title": "test_song",
+  "bpm": 120,
+  "division": 4,
+  "default_amp": 0.18,
+  "assignment": {
+    "pair_1": ["L", "R"]
+  },
+  "tracks": [
+    {
+      "name": "left_part",
+      "device": "L",
+      "amp": 0.18,
+      "sequence": "C4:1 D4:1 E4:1 R:1 G4:2"
+    },
+    {
+      "name": "right_part",
+      "device": "R",
+      "amp": 0.18,
+      "sequence": "E4:1 F4:1 G4:1 R:1 C5:2"
+    }
+  ]
+}

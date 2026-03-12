@@ -42,7 +42,7 @@ def normalize_note_name(note):
 
 def note_to_midi(note):
     note = normalize_note_name(note)
-    if note == "REST":
+    if note == "REST" or note == "R":
         return None
 
     if len(note) < 2:
@@ -78,6 +78,54 @@ def length_to_seconds(length, bpm, division=4):
     return beat_seconds * length * base
 
 
+def parse_sequence(sequence):
+    if not isinstance(sequence, str):
+        raise ValueError("sequence は文字列である必要があります")
+
+    tokens = sequence.split()
+    notes = []
+
+    for token in tokens:
+        if ":" not in token:
+            raise ValueError(f"無効なトークンです: {token}")
+
+        note_part, length_part = token.split(":", 1)
+        note = note_part.strip()
+        length = float(length_part.strip())
+
+        if not note:
+            raise ValueError(f"音名が空です: {token}")
+        if length <= 0:
+            raise ValueError(f"長さは正の値である必要があります: {token}")
+
+        notes.append({
+            "note": note,
+            "length": length,
+        })
+
+    return notes
+
+
+def get_track_notes(track):
+    has_notes = "notes" in track
+    has_sequence = "sequence" in track
+
+    if has_notes and has_sequence:
+        raise ValueError(f"track は notes と sequence を同時に持てません: {track.get('name', track)}")
+    if not has_notes and not has_sequence:
+        raise ValueError(f"track に notes または sequence が必要です: {track.get('name', track)}")
+
+    if has_notes:
+        if not isinstance(track["notes"], list) or not track["notes"]:
+            raise ValueError(f"track.notes が不正です: {track.get('name', track)}")
+        return track["notes"]
+
+    parsed = parse_sequence(track["sequence"])
+    if not parsed:
+        raise ValueError(f"track.sequence が空です: {track.get('name', track)}")
+    return parsed
+
+
 def build_timeline(song):
     validate_song(song)
 
@@ -91,15 +139,17 @@ def build_timeline(song):
     for track in song["tracks"]:
         if "device" not in track:
             raise ValueError(f"track に device がありません: {track}")
-        if "notes" not in track:
-            raise ValueError(f"track に notes がありません: {track}")
 
         device = track["device"]
         current_time = 0.0
         track_amp = float(track.get("amp", default_amp))
         events = []
+        notes = get_track_notes(track)
 
-        for index, item in enumerate(track["notes"]):
+        for index, item in enumerate(notes):
+            if "note" not in item or "length" not in item:
+                raise ValueError(f"各ノートには note と length が必要です: {item}")
+
             note = item["note"]
             length = float(item["length"])
             amp = float(item.get("amp", track_amp))
