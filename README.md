@@ -10,4 +10,4 @@ Joyconを楽器にして演奏するためのソフトウェアです。
 - hidapi (Pythonライブラリ)
     - pip install hidapi
         - ※仮想環境を構築してからインストールすることを推奨します。
-        - python -m venv venv
+        - python -m venv .venv
