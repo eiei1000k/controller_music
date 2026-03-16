@@ -7,7 +7,7 @@ JoyconのHD振動機能を利用して、音を鳴らすことができます。
 
 </div>
 
-<p style="text-align: center;">
+<p align="center" style="text-align: center;">
     <!-- 動作保証OS -->
     <img src="https://img.shields.io/badge/OS-Windows10%2F11-blue?style=for-the-badge&logo=windows&logoColor=white" alt="Windows 10/11">
     <!-- 動作保証Pythonバージョン -->
