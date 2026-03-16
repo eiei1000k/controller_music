@@ -22,10 +22,13 @@ def list_supported_devices():
         }:
             devices.append(d)
             continue
+
         product_name = (d.get("product_string") or "").lower()
         manufacturer = (d.get("manufacturer_string") or "").lower()
+
         if "joy-con" in product_name or ("nintendo" in manufacturer and "controller" in product_name):
             devices.append(d)
+
     return devices
 
 

@@ -28,8 +28,10 @@ def close_devices(devices):
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("song", nargs="?", default="songs/family_mart.json")
+    parser.add_argument("song", nargs="?", default="songs/notes_test.json")
     parser.add_argument("--tick", type=float, default=0.005)
+    parser.add_argument("--retrigger-gap", type=float, default=0.003)
+    parser.add_argument("--sustain-refresh-ticks", type=int, default=3)
     args = parser.parse_args()
 
     song_path = Path(args.song)
@@ -40,7 +42,13 @@ def main():
     devices = build_devices()
 
     try:
-        play_song(song, devices, tick=args.tick)
+        play_song(
+            song,
+            devices,
+            tick=args.tick,
+            retrigger_gap=args.retrigger_gap,
+            sustain_refresh_ticks=args.sustain_refresh_ticks,
+        )
     finally:
         close_devices(devices)
 

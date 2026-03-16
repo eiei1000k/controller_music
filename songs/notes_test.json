@@ -1,0 +1,39 @@
+{
+  "title": "test_song_notes",
+  "bpm": 120,
+  "division": 4,
+  "default_amp": 0.18,
+  "assignment": {
+    "pair_1": ["L", "R"]
+  },
+  "tracks": [
+    {
+      "name": "left_part",
+      "device": "L",
+      "amp": 0.18,
+      "notes": [
+        { "note": "C4", "length": 1 },
+        { "note": "D4", "length": 1 },
+        { "note": "E4", "length": 1 },
+        { "note": "R", "length": 1 },
+        { "note": "G4", "length": 2 },
+        { "note": "C4", "length": 1 },
+        { "note": "C4", "length": 1 }
+      ]
+    },
+    {
+      "name": "right_part",
+      "device": "R",
+      "amp": 0.18,
+      "notes": [
+        { "note": "E4", "length": 1 },
+        { "note": "F4", "length": 1 },
+        { "note": "G4", "length": 1 },
+        { "note": "R", "length": 1 },
+        { "note": "C5", "length": 2 },
+        { "note": "G4", "length": 1 },
+        { "note": "G4", "length": 1 }
+      ]
+    }
+  ]
+}

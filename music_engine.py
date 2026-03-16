@@ -42,7 +42,8 @@ def normalize_note_name(note):
 
 def note_to_midi(note):
     note = normalize_note_name(note)
-    if note == "REST" or note == "R":
+
+    if note in {"REST", "R"}:
         return None
 
     if len(note) < 2:
@@ -143,8 +144,8 @@ def build_timeline(song):
         device = track["device"]
         current_time = 0.0
         track_amp = float(track.get("amp", default_amp))
-        events = []
         notes = get_track_notes(track)
+        events = []
 
         for index, item in enumerate(notes):
             if "note" not in item or "length" not in item:
@@ -171,17 +172,35 @@ def build_timeline(song):
     return timelines, total_duration
 
 
-def get_event_at(events, now):
-    for event in events:
+def get_event_at(events, now, current_index):
+    if current_index < len(events):
+        event = events[current_index]
         if event["start"] <= now < event["end"]:
-            return event
-    return None
+            return current_index, event
+        if now >= event["end"]:
+            while current_index < len(events) and now >= events[current_index]["end"]:
+                current_index += 1
+            if current_index < len(events):
+                event = events[current_index]
+                if event["start"] <= now < event["end"]:
+                    return current_index, event
+            return current_index, None
+    return current_index, None
 
 
-def play_song(song, devices, tick=0.005, retrigger_gap=0.002):
+def play_song(
+    song,
+    devices,
+    tick=0.005,
+    retrigger_gap=0.003,
+    sustain_refresh_ticks=3,
+):
     timelines, total_duration = build_timeline(song)
     device_names = list(devices.keys())
+
     last_state = {name: None for name in device_names}
+    current_indexes = {name: 0 for name in device_names}
+    sustain_counters = {name: 0 for name in device_names}
 
     start_time = time.perf_counter()
     next_tick = start_time
@@ -194,7 +213,7 @@ def play_song(song, devices, tick=0.005, retrigger_gap=0.002):
         for name in device_names:
             device = devices[name]
             events = timelines.get(name, [])
-            event = get_event_at(events, now)
+            current_indexes[name], event = get_event_at(events, now, current_indexes[name])
 
             if event is None or event["hz"] is None:
                 state = None
@@ -212,10 +231,15 @@ def play_song(song, devices, tick=0.005, retrigger_gap=0.002):
                             time.sleep(retrigger_gap)
                     packet = device.make_packet(event["hz"], event["amp"])
                     device.rumble(packet)
+
                 last_state[name] = state
+                sustain_counters[name] = 0
             elif state is not None:
-                packet = device.make_packet(event["hz"], event["amp"])
-                device.rumble(packet)
+                sustain_counters[name] += 1
+                if sustain_counters[name] >= sustain_refresh_ticks:
+                    packet = device.make_packet(event["hz"], event["amp"])
+                    device.rumble(packet)
+                    sustain_counters[name] = 0
 
         next_tick += tick
         sleep_time = next_tick - time.perf_counter()
