@@ -54,7 +54,7 @@ pip install hidapi
 <div style="font-size: 1.1em; margin-top: 20px; margin-bottom: 20px;">
     songsフォルダ内にJSONファイルを作成して、曲の情報を記述します。</br>
     JSONファイルの構造は、notes_test.jsonやsequence_test.jsonを参考にしてください。</br>
-    サンプルとして、family_mart.jsonも確認できます。
+    サンプルとして、family_mart.json、night_of_nights.jsonも確認できます。
 </div>
 
 notes記述の例<br>
@@ -66,6 +66,11 @@ sequence記述の例<br>
 note記法でのサンプル曲（ファミリーマートの入店音）<br>
 [family_mart.json](songs/family_mart.json)
 
+sequence記法でのサンプル曲（ナイト オブ ナイツ）<br>
+[night_of_nights.json](songs/night_of_nights/night_of_nights.json)<br>
+[night_of_nights_L.seq](songs/night_of_nights/night_of_nights_L.seq)<br>
+[night_of_nights_R.seq](songs/night_of_nights/night_of_nights_R.seq)
+
 <div style="font-size: 1.1em; margin-top: 20px;">
     曲の情報を記述したら、main.pyの31行目に作成したJSONファイルのパスを指定して、main.pyを実行します。
 </div>
@@ -76,8 +81,10 @@ python main.py
 
   
   
-## 曲のJSONファイルの構造
+## 曲ファイルの構造
 曲のJSONファイルは、以下のような構造になっています。
+
+### notes記述
 
 ```json
 {
@@ -95,16 +102,90 @@ python main.py
       "amp": 音量の倍率(振動の強さ),
       "notes": [
             { "note": "音符の名前（例: C4, D4, E4）", "length": 音符の長さ(divisionの分割数で表す) } // notes記述の場合
+            { "note": "音符の名前（例: C4, D4, E4）", "length": 音符の長さ(divisionの分割数で表す) }
       ]
     },
     {
       "name": "パートの名前",
       "device": "使用するデバイスの名前",
       "amp": 音量の倍率(振動の強さ),
-      "sequence": "音符の名前:長さ 音符の名前:長さ ...(例: C4:1 D4:1 E4:1)" // sequence記述の場合
+      "notes": [
+            { "note": "音符の名前（例: C4, D4, E4）", "length": 音符の長さ(divisionの分割数で表す) } // notes記述の場合
+            { "note": "音符の名前（例: C4, D4, E4）", "length": 音符の長さ(divisionの分割数で表す) }
+      ]
     }
   ]
 }
+```
+  
+  
+### sequence記述
+
+```json
+{
+  "title": "曲のタイトル",
+  "bpm": BPMの値,
+  "division": 1拍を何分割するか,
+  "default_amp": 初期音量の倍率(振動の強さ),
+  "assignment": {
+    "pair_1": ["L", "R"] // Joyconのペア1に割り当てるデバイスのリスト
+  },
+  "tracks": [
+    {
+      "name": "パートの名前",
+      "device": "使用するデバイスの名前",
+      "amp": 音量の倍率(振動の強さ),
+      "sequence": "音符と休符を組み合わせた文字列（例: C4:2 R:1 D4:2）" // sequence記述の場合
+    },
+    {
+      "name": "パートの名前",
+      "device": "使用するデバイスの名前",
+      "amp": 音量の倍率(振動の強さ),
+      "sequence": "音符と休符を組み合わせた文字列（例: C4:2 R:1 D4:2）" // sequence記述の場合
+    }
+  ]
+}
+```
+  
+  
+### sequence記述(.seq)別ファイルで楽譜を管理する場合
+
+```json
+{
+  "title": "曲のタイトル",
+  "bpm": BPMの値,
+  "division": 1拍を何分割するか,
+  "default_amp": 初期音量の倍率(振動の強さ),
+  "assignment": {
+    "pair_1": ["L", "R"] // Joyconのペア1に割り当てるデバイスのリスト
+  },
+  "tracks": [
+    {
+      "name": "パートの名前",
+      "device": "使用するデバイスの名前",
+      "amp": 音量の倍率(振動の強さ),
+      "sequence_file": "音符と休符を組み合わせた文字列を記述したファイルへのパス（例: songs/night_of_nights/night_of_nights_L.seq）" // sequence_fileを指定して、別ファイルでシーケンスを管理する場合
+    },
+    {
+      "name": "パートの名前",
+      "device": "使用するデバイスの名前",
+      "amp": 音量の倍率(振動の強さ),
+      "sequence_file": "音符と休符を組み合わせた文字列を記述したファイルへのパス（例: songs/night_of_nights/night_of_nights_R.seq）" // sequence_fileを指定して、別ファイルでシーケンスを管理する場合
+    }
+  ]
+}
+```
+  
+  
+### .seqファイルの構造
+  
+.seqファイルは、音符と休符を組み合わせた文字列で楽譜を表現します。音符の名前と長さを「:」で区切り、音符と休符をスペースで区切ります。
+例: `C4:2 R:1 D4:2`は、C4の音符を2分割の長さで鳴らし、その後1分割の休符を挟んで、D4の音符を2分割の長さで鳴らすことを意味します。
+これをLとRの2つの.seqファイルで管理することで、複雑な楽曲も表現できます。
+
+```txt
+C4:2 R:1 D4:2 E4:4 F4:2 R:2 |
+G4:1 R:1 A4:1 R:1 B4:2 |
 ```
   
   
@@ -116,5 +197,6 @@ python main.py
   
 ## 今後の予定
 - MIDIファイルの読み込み機能の実装
-- 音符の種類の追加（休符、スタッカートなど）
+- 音符の種類の追加（スタッカートなど）
+- 疑似パーカッションの実装
 - 複数のJoyconを同時に使用する機能の実装

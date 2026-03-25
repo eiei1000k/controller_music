@@ -1,5 +1,6 @@
 import json
 import time
+from pathlib import Path
 
 NOTE_INDEX = {
     "C": 0,
@@ -23,8 +24,11 @@ NOTE_INDEX = {
 
 
 def load_song(path):
-    with open(path, "r", encoding="utf-8") as f:
-        return json.load(f)
+    song_path = Path(path)
+    with open(song_path, "r", encoding="utf-8") as f:
+        song = json.load(f)
+    song["_base_dir"] = str(song_path.parent.resolve())
+    return song
 
 
 def validate_song(song):
@@ -83,48 +87,107 @@ def parse_sequence(sequence):
     if not isinstance(sequence, str):
         raise ValueError("sequence は文字列である必要があります")
 
-    tokens = sequence.split()
     notes = []
 
-    for token in tokens:
-        if ":" not in token:
-            raise ValueError(f"無効なトークンです: {token}")
+    for raw_line in sequence.splitlines():
+        line = raw_line.strip()
+        if not line:
+            continue
 
-        note_part, length_part = token.split(":", 1)
-        note = note_part.strip()
-        length = float(length_part.strip())
+        if ";" in line:
+            line = line.split(";", 1)[0].strip()
+        if "//" in line:
+            line = line.split("//", 1)[0].strip()
 
-        if not note:
-            raise ValueError(f"音名が空です: {token}")
-        if length <= 0:
-            raise ValueError(f"長さは正の値である必要があります: {token}")
+        if not line:
+            continue
 
-        notes.append({
-            "note": note,
-            "length": length,
-        })
+        line = line.replace("|", " ")
+        tokens = line.split()
+
+        for token in tokens:
+            if ":" not in token:
+                raise ValueError(f"無効なトークンです: {token}")
+
+            note_part, length_part = token.split(":", 1)
+            note = note_part.strip()
+            length = float(length_part.strip())
+
+            if not note:
+                raise ValueError(f"音名が空です: {token}")
+            if length <= 0:
+                raise ValueError(f"長さは正の値である必要があります: {token}")
+
+            notes.append({
+                "note": note,
+                "length": length,
+            })
 
     return notes
 
 
-def get_track_notes(track):
+def load_sequence_file(sequence_file, base_dir):
+    if not base_dir:
+        raise ValueError("sequence_file を読むには base_dir が必要です")
+
+    path = Path(base_dir) / sequence_file
+    if not path.exists():
+        raise FileNotFoundError(f"sequence_file が見つかりません: {path}")
+
+    with open(path, "r", encoding="utf-8") as f:
+        return f.read()
+
+
+def get_track_notes(track, base_dir=None):
     has_notes = "notes" in track
     has_sequence = "sequence" in track
+    has_sequence_file = "sequence_file" in track
 
-    if has_notes and has_sequence:
-        raise ValueError(f"track は notes と sequence を同時に持てません: {track.get('name', track)}")
-    if not has_notes and not has_sequence:
-        raise ValueError(f"track に notes または sequence が必要です: {track.get('name', track)}")
+    count = int(has_notes) + int(has_sequence) + int(has_sequence_file)
+
+    if count == 0:
+        raise ValueError(f"track に notes / sequence / sequence_file のいずれかが必要です: {track.get('name', track)}")
+    if count > 1:
+        raise ValueError(f"track は notes / sequence / sequence_file を同時に複数持てません: {track.get('name', track)}")
 
     if has_notes:
         if not isinstance(track["notes"], list) or not track["notes"]:
             raise ValueError(f"track.notes が不正です: {track.get('name', track)}")
         return track["notes"]
 
-    parsed = parse_sequence(track["sequence"])
+    if has_sequence:
+        parsed = parse_sequence(track["sequence"])
+        if not parsed:
+            raise ValueError(f"track.sequence が空です: {track.get('name', track)}")
+        return parsed
+
+    raw = load_sequence_file(track["sequence_file"], base_dir)
+    parsed = parse_sequence(raw)
     if not parsed:
-        raise ValueError(f"track.sequence が空です: {track.get('name', track)}")
+        raise ValueError(f"track.sequence_file が空です: {track.get('name', track)}")
     return parsed
+
+
+def compensate_amp(hz, amp, amp_compensation_enabled=True):
+    if not amp_compensation_enabled or hz is None:
+        return amp
+
+    adjusted = float(amp)
+
+    if hz < 110:
+        adjusted += 0.05
+    elif hz < 180:
+        adjusted += 0.035
+    elif hz < 260:
+        adjusted += 0.02
+    elif hz < 420:
+        adjusted += 0.0
+    elif hz < 700:
+        adjusted += 0.01
+    else:
+        adjusted += 0.02
+
+    return max(0.0, min(adjusted, 0.35))
 
 
 def build_timeline(song):
@@ -133,6 +196,8 @@ def build_timeline(song):
     bpm = float(song["bpm"])
     division = int(song.get("division", 4))
     default_amp = float(song.get("default_amp", 0.18))
+    default_amp_compensation = bool(song.get("amp_compensation", True))
+    base_dir = song.get("_base_dir")
 
     timelines = {}
     total_duration = 0.0
@@ -144,7 +209,8 @@ def build_timeline(song):
         device = track["device"]
         current_time = 0.0
         track_amp = float(track.get("amp", default_amp))
-        notes = get_track_notes(track)
+        track_amp_compensation = bool(track.get("amp_compensation", default_amp_compensation))
+        notes = get_track_notes(track, base_dir=base_dir)
         events = []
 
         for index, item in enumerate(notes):
@@ -153,8 +219,10 @@ def build_timeline(song):
 
             note = item["note"]
             length = float(item["length"])
-            amp = float(item.get("amp", track_amp))
+            base_amp = float(item.get("amp", track_amp))
             hz = note_to_hz(note)
+            amp_compensation_enabled = bool(item.get("amp_compensation", track_amp_compensation))
+            amp = compensate_amp(hz, base_amp, amp_compensation_enabled)
             duration = length_to_seconds(length, bpm, division)
 
             events.append({

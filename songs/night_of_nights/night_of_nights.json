@@ -1,0 +1,24 @@
+{
+  "title": "night_of_nights",
+  "bpm": 180,
+  "division": 16,
+  "default_amp": 0.3,
+  "amp_compensation": true,
+  "assignment": {
+    "pair_1": ["L", "R"]
+  },
+  "tracks": [
+    {
+      "name": "left_part",
+      "device": "L",
+      "amp": 0.25,
+      "sequence_file": "night_of_nights_L.seq"
+    },
+    {
+      "name": "right_part",
+      "device": "R",
+      "amp": 0.25,
+      "sequence_file": "night_of_nights_R.seq"
+    }
+  ]
+}
